@@ -453,23 +453,29 @@ static void slow_conv_transpose2d_backward_out_cpu_template(
           grad_input_n = grad_input.select(0, elt);
           grad_output_n = grad_output.select(0, elt);
 
-          // Extract columns:
-          im2col<scalar_t>(
-              grad_output_n.data_ptr<scalar_t>(),
-              n_output_plane,
-              output_height,
-              output_width,
-              input_height,
-              input_width,
-              kernel_height,
-              kernel_width,
-              pad_height,
-              pad_width,
-              stride_height,
-              stride_width,
-              dilation_height,
-              dilation_width,
-              grad_columns.data_ptr<scalar_t>());
+          if (kernel_height == 1 && kernel_width == 1) {
+            // for 1x1 column skip im2col step
+            printf("[DEBUG] activating 1x1 kernel");
+            grad_columns.copy_(grad_output_n);
+          } else {
+              // Extract columns:
+              im2col<scalar_t>(
+                   grad_output_n.data_ptr<scalar_t>(),
+                   n_output_plane,
+                   output_height,
+                   output_width,
+                   input_height,
+                   input_width,
+                   kernel_height,
+                   kernel_width,
+                   pad_height,
+                   pad_width,
+                   stride_height,
+                   stride_width,
+                   dilation_height,
+                   dilation_width,
+                   grad_columns.data_ptr<scalar_t>());
+          }
 
           // M,N,K are dims of matrix A and B
           // (see http://docs.nvidia.com/cuda/cublas/#cublas-lt-t-gt-gemm)
@@ -644,23 +650,29 @@ void slow_conv_transpose2d_acc_grad_parameters_cpu(
             // Matrix mulitply per output:
             input_n = input.select(0, elt);
 
-            // Extract columns:
-            im2col<scalar_t>(
-                grad_output_n.data_ptr<scalar_t>(),
-                n_output_plane,
-                output_height,
-                output_width,
-                input_height,
-                input_width,
-                kernel_height,
-                kernel_width,
-                pad_height,
-                pad_width,
-                stride_height,
-                stride_width,
-                dilation_height,
-                dilation_width,
-                columns.data_ptr<scalar_t>());
+            if (kernel_height == 1 && kernel_width == 1) {
+              // for 1x1 column skip im2col step
+              printf("[DEBUG] activating 1x1 kernel");
+              columns.copy_(grad_output_n);
+            } else {
+                // Extract columns:
+                im2col<scalar_t>(
+                    grad_output_n.data_ptr<scalar_t>(),
+                    n_output_plane,
+                    output_height,
+                    output_width,
+                    input_height,
+                    input_width,
+                    kernel_height,
+                    kernel_width,
+                    pad_height,
+                    pad_width,
+                    stride_height,
+                    stride_width,
+                    dilation_height,
+                    dilation_width,
+                    columns.data_ptr<scalar_t>());
+            }
 
             // M,N,K are dims of matrix A and B
             // (see http://docs.nvidia.com/cuda/cublas/#cublas-lt-t-gt-gemm)

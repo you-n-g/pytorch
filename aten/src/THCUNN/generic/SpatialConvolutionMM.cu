@@ -213,16 +213,21 @@ void THNN_(SpatialConvolutionMM_updateOutput)(
       THCTensor_(zero)(state, output_n);
     }
 
-    // Extract columns:
-    at::native::im2col<scalar_t>(
-      c10::cuda::getCurrentCUDAStream(),
-      THCTensor_(data)(state, input_n),
-      nInputPlane, inputHeight, inputWidth,
-      outputHeight, outputWidth,
-      kH, kW, padH, padW, dH, dW,
-      1, 1,
-      columns->data<scalar_t>()
-    );
+    if (kH == 1 && kW == 1) {
+      // for 1x1 column skip im2col step
+      // TODO(@rongr) test this
+    } else {
+      // Extract columns:
+      at::native::im2col<scalar_t>(
+        c10::cuda::getCurrentCUDAStream(),
+        THCTensor_(data)(state, input_n),
+        nInputPlane, inputHeight, inputWidth,
+        outputHeight, outputWidth,
+        kH, kW, padH, padW, dH, dW,
+        1, 1,
+        columns->data<scalar_t>()
+      );
+    }
 
     // M,N,K are dims of matrix A and B
     // (see http://docs.nvidia.com/cuda/cublas/#cublas-lt-t-gt-gemm)
@@ -456,16 +461,21 @@ void THNN_(SpatialConvolutionMM_accGradParameters)(
       // Matrix mulitply per output:
       THCTensor_(select)(state, input_n, input, 0, elt);
 
-      // Extract columns:
-      at::native::im2col<scalar_t>(
-        c10::cuda::getCurrentCUDAStream(),
-        THCTensor_(data)(state, input_n),
-        nInputPlane, inputHeight, inputWidth,
-        outputHeight, outputWidth,
-        kH, kW, padH, padW, dH, dW,
-        1, 1,
-        columns->data<scalar_t>()
-      );
+      if (kH == 1 && kW == 1) {
+        // for 1x1 column skip im2col step
+        // TODO(@rongr) test this
+      } else {
+        // Extract columns:
+        at::native::im2col<scalar_t>(
+          c10::cuda::getCurrentCUDAStream(),
+          THCTensor_(data)(state, input_n),
+          nInputPlane, inputHeight, inputWidth,
+          outputHeight, outputWidth,
+          kH, kW, padH, padW, dH, dW,
+          1, 1,
+          columns->data<scalar_t>()
+        );
+      }
 
       // M,N,K are dims of matrix A and B
       // (see http://docs.nvidia.com/cuda/cublas/#cublas-lt-t-gt-gemm)
