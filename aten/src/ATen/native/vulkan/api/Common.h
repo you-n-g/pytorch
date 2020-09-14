@@ -24,10 +24,10 @@
     at::native::vulkan::api::destroy_##Handle
 
 #define VK_DELETER_DISPATCHABLE_DECLARE(Handle) \
-    C10_EXPORT void destroy_##Handle(const Vk##Handle handle)
+    void destroy_##Handle(const Vk##Handle handle)
 
 #define VK_DELETER_NON_DISPATCHABLE_DECLARE(Handle)   \
-  class C10_EXPORT destroy_##Handle final {           \
+  class destroy_##Handle final {                      \
    public:                                            \
     explicit destroy_##Handle(const VkDevice device); \
     void operator()(const Vk##Handle handle) const;   \
@@ -39,6 +39,14 @@ namespace at {
 namespace native {
 namespace vulkan {
 namespace api {
+
+struct Command;
+class Context;
+struct Descriptor;
+struct Pipeline;
+struct Resource;
+class Runtime;
+struct Shader;
 
 VK_DELETER_DISPATCHABLE_DECLARE(Instance);
 VK_DELETER_DISPATCHABLE_DECLARE(Device);
@@ -78,13 +86,13 @@ class Handle final {
   Handle(const Handle&) = delete;
   Handle& operator=(const Handle&) = delete;
   Handle(Handle&&);
-  Handle& operator=(Handle&&);
+  Handle& operator=(Handle&&) &;
   ~Handle();
 
-  operator bool() const;
-  Type get() const;
-  Type release();
-  void reset(Type payload = kNull);
+  operator bool() const &;
+  Type get() const &;
+  Type release() &;
+  void reset(Type payload = kNull) &;
 
  private:
   static constexpr Type kNull{};
@@ -112,7 +120,7 @@ inline Handle<Type, Deleter>::Handle(Handle&& handle)
 
 template<typename Type, typename Deleter>
 inline Handle<Type, Deleter>&
-Handle<Type, Deleter>::operator=(Handle&& handle)
+Handle<Type, Deleter>::operator=(Handle&& handle) &
 {
   reset(handle.release());
   deleter_ = std::move(handle.deleter_);
@@ -125,17 +133,17 @@ inline Handle<Type, Deleter>::~Handle() {
 }
 
 template<typename Type, typename Deleter>
-inline Handle<Type, Deleter>::operator bool() const {
+inline Handle<Type, Deleter>::operator bool() const & {
   return get();
 }
 
 template<typename Type, typename Deleter>
-inline Type Handle<Type, Deleter>::get() const {
+inline Type Handle<Type, Deleter>::get() const & {
   return payload_;
 }
 
 template<typename Type, typename Deleter>
-inline Type Handle<Type, Deleter>::release() {
+inline Type Handle<Type, Deleter>::release() & {
   const Type payload = payload_;
   payload_ = kNull;
 
@@ -143,7 +151,7 @@ inline Type Handle<Type, Deleter>::release() {
 }
 
 template<typename Type, typename Deleter>
-inline void Handle<Type, Deleter>::reset(Type payload) {
+inline void Handle<Type, Deleter>::reset(Type payload) & {
   using std::swap;
   swap(payload_, payload);
 
